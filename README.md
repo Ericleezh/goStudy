@@ -1,2 +1,3 @@
-# goStudy
-go学习笔记
+## goStudy
+---
+#### Go基础学习部分
