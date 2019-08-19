@@ -87,11 +87,11 @@ func getMultiReturn(input int) (a int, b int) {
 18. 通过buffer串联字符串，最后转换成string类型（类似于Java中的StringBuilder，比+=的方式更节省内存和CPU）
 
 19. for-range结构
-```go
-for ix, value := range slice1 {
-    ...
-}
-```
+    ```go
+    for ix, value := range slice1 {
+        ...
+    }
+    ```
     * 该结构仅适用于数组和切片，并且其中的value只是值的拷贝，不能修改对应索引位置的值。
 
 20. Go中的字符串是不可变的，若需要修改字符串，需要先将字符串转换成字节数组，再修改数组中对应的元素，最后转换回字符串格式。
