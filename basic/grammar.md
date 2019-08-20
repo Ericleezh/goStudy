@@ -211,7 +211,50 @@ func getMultiReturn(input int) (a int, b int) {
     * setter方法使用Set前缀
     * getter方法直接使用成员名 
 
-37. 如何在类型中嵌入功能
+37. 自定义的String()方法：定义了有多个方法的类型时，使用自定义的String()方法格式化输入内容时，fmt.Print() 和 fmt.Println() 也会自动使用 String() 方法。
+
+38. 垃圾回收和SetFinalizer
+    * Go运行时中有独立的进程（GC）搜索不再使用的变量并释放内存，可以通过`runtime`包访问GC进程。
+    * 获取当前的内存状态
+    ```go
+    var m runtime.MemStats
+    runtime.ReadMemStats(&m)
+    fmt.Printf("%d Kb\n", m.Alloc / 1024)
+    ```
+    * 在对象被从内存移除之前执行一些特殊操作(例如写进日志文件)
+    ```go
+    runtime.SetFinalizer(obj, func(obj * typeObj))
+    ```
+
+39. 接口
+    * 接口的名字由方法名加[e]r组成，或者以'I'开头
+    * 类型不需要显示的声明它实现了某个接口：接口被隐式地实现。多个类型可以实现同一接口
+    * 实现某个接口的类型（除了实现接口方法外）可以有其他的方法。
+    * 一个类型可以实现多个接口。
+    * 接口类型可以包含一个实例的引用， 该实例的类型实现了此接口（接口是动态类型）。
+
+40. type-switch:用于判断接口变量的类型
+```go
+switch t := areaIntf.(type) {
+case *Square:
+    fmt.Printf("Type Square %T with value %v\n", t, t)
+case *Circle:
+    fmt.Printf("Type Circle %T with value %v\n", t, t)
+case nil:
+    fmt.Printf("nil value: nothing to check?\n")
+default:
+    fmt.Printf("Unexpected type %T\n", t)
+}
+```
+
+41. Go 语言规范定义了接口方法集的调用规则：
+    * 类型 *T 的可调用方法集包含接受者为 *T 或 T 的所有方法集(会自动解引用)
+    * 类型 T 的可调用方法集包含接受者为 T 的所有方法
+    * 类型 T 的可调用方法集不包含接受者为 *T 的方法
+
+42. 空接口/最小接口： 即不包含方法的接口（类似与Java中的Object），可以给其赋任何类型的值
+
+43. 由于空接口切片和其他类型的数据切片在内存中的布局是不相同的，所以在将切片中的数据复制到一个空接口切片中时，会报`cannot use dataSlice (type []myType) as type []interface { } in assignment`的编译错误。 **必须使用`for-range`语句来一个个显式复制**
 
 
 
