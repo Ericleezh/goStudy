@@ -256,6 +256,45 @@ default:
 
 43. 由于空接口切片和其他类型的数据切片在内存中的布局是不相同的，所以在将切片中的数据复制到一个空接口切片中时，会报`cannot use dataSlice (type []myType) as type []interface { } in assignment`的编译错误。 **必须使用`for-range`语句来一个个显式复制**
 
+44. 通过反射修改/设置值
+    * v.SetXXX(value)必须是v在**可设置**的情况下使用，否则会产生`reflect.Value.SetFloat using unaddressable value`的错误。
+    * 是否可设置是Value的一个属性，并且不是所有的反射值都有这个属性，可以使用CanSet方法测试是否可设置。
+    * 通过`Elem()`让value变为可设置状态。
+
+45. 与其他语言相比较，Go是唯一结合了接口值，静态类型检查（该类型是否实现了某个接口），运行时动态转换的语言，并且不需要显式地声明类型是否满足某个接口。该特性允许在不改变已有代码的情况下定义和使用新接口。
+
+46. 实现了某个接口的类型可以被传给任何以此接口为参数的函数。
+
+47. 若方法调用作用于类似`interface{}`这样的泛型上，可以通过类型断言来判断变量是否实现了相应接口。
+```go
+type xmlWriter interface {
+    WriteXML(w io.Writer) error
+}
+
+// Exported XML streaming function.
+func StreamXML(v interface{}, w io.Writer) error {
+    if xw, ok := v.(xmlWriter); ok {
+        // It’s an  xmlWriter, use method of asserted type.
+        return xw.WriteXML(w)
+    }
+    // No implementation, so we have to use our own function (with perhaps reflection):
+    return encodeToXML(v, w)
+}
+
+// Internal XML encoding function.
+func encodeToXML(v interface{}, w io.Writer) error {
+    // ...
+}
+```
+
+48. 接口的继承
+    * 当一个类型包含（内嵌）另一个类型（实现了一个或多个接口）的指针时，这个类型就可以使用（另一个类型）所有的接口方法
+
+49. 读文件
+    * ReadingString()
+    * 将整个文件内容读取到一个字符串中--ioutil.ReadFile()
+    * 带缓冲的读取--bufio.Reader()
+    * 按列读取文件中的数据--使用`fmt`中提供的以`FScan`开头的函数读取
 
 
 
