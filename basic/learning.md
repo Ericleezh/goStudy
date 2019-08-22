@@ -1,7 +1,9 @@
-### Learning code
----
+## Learning code
 
-##### 结构体、集合以及高阶函数demo
+
+##### #1.结构体、集合以及高阶函数相关demo
+<details>
+    <summary><font color=#0395E7>demo.go</font></summary>
 ```go
 package main
 
@@ -90,3 +92,160 @@ func MakeSortedAppender(manufacturers []string) (func(car *Car), map[string]Cars
     return appender, sortedCars
 }
 ```
+</details>
+
+---
+
+##### #2.通过buffer读取文件并输出到控制台
+<details>
+    <summary><font color=#0395E7>bufferReader.go</font></summary>
+```go
+func cat(r *bufio.Reader) {
+    for {
+        buf, err := r.ReadBytes('\n')
+        if err == io.EOF {
+            break
+        }
+        fmt.Fprintf(os.Stdout, "%s", buf)
+    }
+    return
+}
+
+func main() {
+    flag.Parse()
+    if flag.NArg() == 0 {
+        cat(bufio.NewReader(os.Stdin))
+    }
+    for i := 0; i < flag.NArg(); i++ {
+        f, err := os.Open(flag.Arg(i))
+        if err != nil {
+            fmt.Fprintf(os.Stderr, "%s:error reading from %s: %s\n",os.Args[0], flag.Arg(i), err.Error())
+            continue
+        }
+        cat(bufio.NewReader(f))
+    }
+}
+```
+</details>
+
+---
+
+##### #3.panic,defer和recover结合使用demo
+<details>
+<summary><font color=#0395E7>panicRecover.go</font></summary>
+```go
+package main
+
+import (
+    "fmt"
+)
+
+func badCall() {
+    panic("bad end")
+}
+
+func test() {
+    defer func() {
+        if e := recover(); e != nil {
+            fmt.Printf("Panicing %s\r\n", e)
+        }
+    }()
+    badCall()
+    fmt.Printf("After bad call\r\n") // <-- wordt niet bereikt
+}
+
+func main() {
+    fmt.Printf("Calling test\r\n")
+    test()
+    fmt.Printf("Test completed\r\n")
+}
+```
+</details>
+
+---
+
+##### 自定义包中的错误处理和panicking
+* 向包的调用者返回错误值（而不是 panic）
+* 在包内部，总是应该从 panic 中 recover：不允许显式的超出包范围的 panic()。
+
+<details>
+<summary><font color=#0395E7>parse.go</font></summary>
+```go
+// parse.go
+package parse
+
+import (
+    "fmt"
+    "strings"
+    "strconv"
+)
+
+// A ParseError indicates an error in converting a word into an integer.
+type ParseError struct {
+    Index int      // The index into the space-separated list of words.
+    Word  string   // The word that generated the parse error.
+    Err error // The raw error that precipitated this error, if any.
+}
+
+// String returns a human-readable error message.
+func (e *ParseError) String() string {
+    return fmt.Sprintf("pkg parse: error parsing %q as int", e.Word)
+}
+
+// Parse parses the space-separated words in in put as integers.
+func Parse(input string) (numbers []int, err error) {
+    defer func() {
+        if r := recover(); r != nil {
+            var ok bool
+            err, ok = r.(error)
+            if !ok {
+                err = fmt.Errorf("pkg: %v", r)
+            }
+        }
+    }()
+
+    fields := strings.Fields(input)
+    numbers = fields2numbers(fields)
+    return
+}
+
+func fields2numbers(fields []string) (numbers []int) {
+    if len(fields) == 0 {
+        panic("no words to parse")
+    }
+    for idx, field := range fields {
+        num, err := strconv.Atoi(field)
+        if err != nil {
+            panic(&ParseError{idx, field, err})
+        }
+        numbers = append(numbers, num)
+    }
+    return
+}
+```
+</details>
+<details>
+<summary><font color=#0395E7>panic_package.go</font></summary>
+```go
+func main() {
+    var examples = []string{
+            "1 2 3 4 5",
+            "100 50 25 12.5 6.25",
+            "2 + 2 = 4",
+            "1st class",
+            "",
+    }
+
+    for _, ex := range examples {
+        fmt.Printf("Parsing %q:\n  ", ex)
+        nums, err := parse.Parse(ex)
+        if err != nil {
+            fmt.Println(err) // here String() method from ParseError is used
+            continue
+        }
+        fmt.Println(nums)
+    }
+}
+```
+</details>
+
