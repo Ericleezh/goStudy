@@ -228,3 +228,191 @@ func main() {
 }
 ```
 
+---
+
+#### #5.打印素数(协程)
+```go
+// Send the sequence 2, 3, 4, ... to returned channel
+func generate() chan int {
+    ch := make(chan int)
+    go func() {
+        for i := 2; ; i++ {
+            ch <- i
+        }
+    }()
+    return ch
+}
+
+// Filter out input values divisible by 'prime', send rest to returned channel
+func filter(in chan int, prime int) chan int {
+    out := make(chan int)
+    go func() {
+        for {
+            if i := <-in; i%prime != 0 {
+                out <- i
+            }
+        }
+    }()
+    return out
+}
+
+func sieve() chan int {
+    out := make(chan int)
+    go func() {
+        ch := generate()
+        for {
+            prime := <-ch
+            ch = filter(ch, prime)
+            out <- prime
+        }
+    }()
+    return out
+}
+
+func main() {
+    primes := sieve()
+    for {
+        fmt.Println(<-primes)
+    }
+}
+```
+
+---
+
+#### #6.选择使用锁还是通道
+* 使用锁的场景
+    - 访问共享数据结构中的缓存信息
+    - 保存引用程序上下文的状态信息数据
+* 使用通道的场景
+    - 与异步操作的结果进行交互
+    - 分发任务
+    - 传递数据所有权
+
+---
+
+#### #7.使用协程和通道实现惰性生成器
+```go
+type Any interface{}
+type EvalFunc func(Any) (Any, Any)
+
+func main() {
+    evenFunc := func(state Any) (Any, Any) {
+        os := state.(int)
+        ns := os + 2
+        return os, ns
+    }
+    
+    even := BuildLazyIntEvaluator(evenFunc, 0)
+    
+    for i := 0; i < 10; i++ {
+        fmt.Printf("%vth even: %v\n", i, even())
+    }
+}
+
+func BuildLazyEvaluator(evalFunc EvalFunc, initState Any) func() Any {
+    retValChan := make(chan Any)
+    loopFunc := func() {
+        var actState Any = initState
+        var retVal Any
+        for {
+            retVal, actState = evalFunc(actState)
+            retValChan <- retVal
+        }
+    }
+    retFunc := func() Any {
+        return <- retValChan
+    }
+    go loopFunc()
+    return retFunc
+}
+
+function BuildLazyIntEvaluator(evalFunc EvalFunc, initState Any) func() int {
+    ef := BuildLazyEvaluator(evalFunc, initState)
+    return func() int {
+        return ef().(int)
+    }
+}
+```
+
+---
+
+#### #8.C/S模式下, goroutines and channels demo.
+```go
+package main
+
+import (
+    "fmt"
+)
+
+type Request struct {
+    a, b   int
+    replyc chan int // reply channel inside the Request
+}
+
+type binOp func(a, b int) int
+
+func run(op binOp, req *Request) {
+    req.replyc <- op(req.a, req.b)
+}
+
+func server(op binOp, service chan *Request, quit chan bool) {
+    for {
+        select {
+        case req := <-service: // requests arrive here
+            // start goroutine for request:
+            go run(op, req) // don't wait for op
+        case <-quit:
+            return
+        }
+    }
+}
+
+func startServer(op binOp) (service chan *Request, quit chan bool) {
+    service = make(chan *Request)
+    quit = make(chan bool)
+    go server(op, service, quit)
+    return service, quit
+}
+
+func main() {
+    adder, quit := startServer(func(a, b int) int { return a + b })
+    const N = 10000
+    var reqs [N]Request
+    for i := 0; i < N; i++ {
+        req := &reqs[i]
+        req.a = i
+        req.b = i + N
+        req.replyc = make(chan int)
+        adder <- req
+    }
+    // checks:
+    for i := N - 1; i >= 0; i-- { // doesn't matter what order
+        if <-reqs[i].replyc != N+2*i {
+            fmt.Println("fail at", i)
+        } else {
+            fmt.Println("Request ", i, " is ok!")
+        }
+    }
+    quit <- true
+    fmt.Println("done")
+}
+```
+
+---
+
+#### #9.并行化大量数据的运算(多个处理步骤启用多个协程)
+```go
+func ParallelProcessData (in <-chan *Data, out chan<- *Data) {
+    // make channels:
+    preOut := make(chan *Data, 100)
+    stepAOut := make(chan *Data, 100)
+    stepBOut := make(chan *Data, 100)
+    stepCOut := make(chan *Data, 100)
+    // start parallel computations:
+    go PreprocessData(in, preOut)
+    go ProcessStepA(preOut,StepAOut)
+    go ProcessStepB(StepAOut,StepBOut)
+    go ProcessStepC(StepBOut,StepCOut)
+    go PostProcessData(StepCOut,out)
+} 
+```
